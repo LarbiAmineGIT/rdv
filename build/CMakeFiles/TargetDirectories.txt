@@ -1,3 +1,0 @@
-/home/amine/Documents/cours/M1/rdv/tinyraytracer/build/CMakeFiles/rebuild_cache.dir
-/home/amine/Documents/cours/M1/rdv/tinyraytracer/build/CMakeFiles/edit_cache.dir
-/home/amine/Documents/cours/M1/rdv/tinyraytracer/build/CMakeFiles/tinyraytracer.dir
