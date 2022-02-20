@@ -1,3 +1,0 @@
-/home/thifl/cours/S8/rdv/build/CMakeFiles/rebuild_cache.dir
-/home/thifl/cours/S8/rdv/build/CMakeFiles/edit_cache.dir
-/home/thifl/cours/S8/rdv/build/CMakeFiles/tinyraytracer.dir
