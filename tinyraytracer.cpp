@@ -119,8 +119,11 @@ Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &s
     Material material;
 
     if (depth>4 || !scene_intersect(orig, dir, spheres, point, N, material)) {
-        int a = std::max(0, std::min(envmap_width -1, static_cast<int>((atan2(dir.z, dir.x)/(2*M_PI) + .5)*envmap_width)));
-        int b = std::max(0, std::min(envmap_height-1, static_cast<int>(acos(dir.y)/M_PI*envmap_height)));
+	double phi = atan2(dir.z, dir.x);
+	double teta = acos(dir.y);
+
+        int a = (((phi)/(2*M_PI) + .5)*envmap_width);
+        int b = (teta/M_PI*envmap_height);
         return envmap[a+b*envmap_width]; // background color
     }
 
@@ -149,10 +152,15 @@ Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &s
 }
 
 void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights) {
-    const int   width    = 1024;
+	//Constantes récuperées de github
+    const int eyesep = 0.2;
+    const int delta = 60;
+    const int   width    = 1024 + delta;
     const int   height   = 768;
     const float fov      = M_PI/3.;
-    std::vector<Vec3f> framebuffer(width*height);
+    //On crée 2 buffer pour le bleu et le rouge
+    std::vector<Vec3f> framebuffer1(width*height);
+    std::vector<Vec3f> framebuffer2(width*height);
 
     #pragma omp parallel for
     for (size_t j = 0; j<height; j++) { // actual rendering loop
@@ -160,20 +168,34 @@ void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights
             float dir_x =  (i + 0.5) -  width/2.;
             float dir_y = -(j + 0.5) + height/2.;    // this flips the image at the same time
             float dir_z = -height/(2.*tan(fov/2.));
-            framebuffer[i+j*width] = cast_ray(Vec3f(0,0,0), Vec3f(dir_x, dir_y, dir_z).normalize(), spheres, lights);
+	    //We fill the buffers with an offset of eyesep 
+            framebuffer1[i+j*width] = cast_ray(Vec3f(-eyesep/2,0,0), Vec3f(dir_x, dir_y, dir_z).normalize(), spheres, lights);
+            framebuffer2[i+j*width] = cast_ray(Vec3f(eyesep/2,0,0), Vec3f(dir_x, dir_y, dir_z).normalize(), spheres, lights);
         }
     }
 
-    std::vector<unsigned char> pixmap(width*height*3);
-    for (size_t i = 0; i < height*width; ++i) {
-        Vec3f &c = framebuffer[i];
-        float max = std::max(c[0], std::max(c[1], c[2]));
-        if (max>1) c = c*(1./max);
-        for (size_t j = 0; j<3; j++) {
-            pixmap[i*3+j] = (unsigned char)(255 * std::max(0.f, std::min(1.f, framebuffer[i][j])));
-        }
+    std::vector<unsigned char> pixmap((width-delta)*height*3);
+    for (size_t j = 0; j < height; ++j) {
+	for (size_t i = 0; i<width-delta; i++){ 
+		//On récupère les pixels qui nous intéressent
+		Vec3f c1 = framebuffer1[i+delta+j*width];
+		Vec3f c2 = framebuffer2[i+j*width];
+
+		//On met l'image en niveau de gris
+		float max1 = std::max(c1[0], std::max(c1[1],c1[2]));
+		if (max1>1) c1 = c1*(1./max1);
+            	float max2 = std::max(c2[0], std::max(c2[1], c2[2]));
+            	if (max2>1) c2 = c2*(1./max2);
+            	float avg1 = (c1.x+c1.y+c1.z)/3.;
+            	float avg2 = (c2.x+c2.y+c2.z)/3.;
+
+		//On remplit l'image avec les niveaux de bleu ou de rouge
+            	pixmap[(j*(width-delta) + i)*3  ] = 255*avg1;
+            	pixmap[(j*(width-delta) + i)*3+1] = 0;
+            	pixmap[(j*(width-delta) + i)*3+2] = 255*avg2;
+	} 
     }
-    stbi_write_jpg("hey.jpg", width, height, 3, pixmap.data(), 100);
+    stbi_write_jpg("yo.jpg", width-delta, height, 3, pixmap.data(), 100);
 }
 
 int main() {
